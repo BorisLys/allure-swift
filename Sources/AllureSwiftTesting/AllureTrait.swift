@@ -9,6 +9,10 @@ public struct AllureTrait: TestTrait, SuiteTrait, TestScoping, Sendable {
         self.isRecursive = isRecursive
     }
 
+    public func scopeProvider(for test: Test, testCase: Test.Case?) -> AllureTrait? {
+        return self
+    }
+
     public func provideScope(
         for test: Test,
         testCase: Test.Case?,
