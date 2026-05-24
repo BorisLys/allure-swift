@@ -82,6 +82,7 @@ public final class AllureXCTestObserver: NSObject, XCTestObservation, @unchecked
         lock.unlock()
         guard let uuid else { return }
 
+        AllureFailureDiagnostics.attachFailureDiagnostics(testUUID: uuid, issues: issues)
         let (status, details) = Self.deriveStatus(from: issues, testCase: testCase)
         AllureLifecycle.shared.stopTest(uuid: uuid, status: status, details: details)
         AllureContext.setThreadCurrent(nil)

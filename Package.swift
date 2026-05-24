@@ -43,6 +43,11 @@ let package = Package(
             dependencies: ["AllureSwiftCore", "AllureSwiftTesting"],
             path: "Tests/AllureSwiftTestingTests"
         ),
+        .testTarget(
+            name: "AllureSwiftXCTestTests",
+            dependencies: ["AllureSwiftCore", "AllureSwiftXCTest"],
+            path: "Tests/AllureSwiftXCTestTests"
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

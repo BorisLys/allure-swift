@@ -6,6 +6,7 @@ A Swift Package Manager library that generates [Allure Report](https://allurerep
 
 - Native Swift 6, fully `Sendable`, strict-concurrency clean.
 - XCTest integration: automatic lifecycle via `XCTestObservation`.
+- XCTest UI failure diagnostics: assertion details, UI hierarchy, and a screenshot are attached on failed tests when available.
 - Swift Testing integration: traits (`.allure`, `.epic`, `.feature`, …) plus `TestScoping`.
 - Steps (sync + async, arbitrarily nested), attachments, labels, links, parameters.
 - Fixtures via `TestResultContainer` (befores/afters).
