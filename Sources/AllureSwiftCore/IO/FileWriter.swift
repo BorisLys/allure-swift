@@ -10,8 +10,8 @@ public final class FileWriter: @unchecked Sendable {
     private let encoder: JSONEncoder
     private let queue: DispatchQueue
     private let fileManager = FileManager.default
-    private let preparationLock = NSLock()
-    private var preparedDirectory = false
+
+    private static let preparedDirectories = PreparedDirectories()
 
     public init(directory: ResultsDirectory, encoder: JSONEncoder = JSONEncoderFactory.make()) {
         self.directory = directory
@@ -75,22 +75,24 @@ public final class FileWriter: @unchecked Sendable {
     }
 
     private func prepareDirectoryIfNeeded() throws {
-        preparationLock.lock()
-        defer { preparationLock.unlock() }
-        guard !preparedDirectory else { return }
-
+        let shouldClear = Self.shouldClearDirectory(at: directory.url)
         if fileManager.fileExists(atPath: directory.url.path) {
-            let contents = try fileManager.contentsOfDirectory(
-                at: directory.url,
-                includingPropertiesForKeys: nil
-            )
-            for item in contents {
-                try fileManager.removeItem(at: item)
+            if shouldClear {
+                let contents = try fileManager.contentsOfDirectory(
+                    at: directory.url,
+                    includingPropertiesForKeys: nil
+                )
+                for item in contents {
+                    try fileManager.removeItem(at: item)
+                }
             }
         } else {
             try directory.ensureExists()
         }
-        preparedDirectory = true
+    }
+
+    private static func shouldClearDirectory(at url: URL) -> Bool {
+        preparedDirectories.markIfNeeded(url.standardizedFileURL.path)
     }
 
     private func writeJSON<T: Encodable>(_ value: T, to url: URL) throws {
@@ -105,5 +107,18 @@ public final class FileWriter: @unchecked Sendable {
         } catch {
             throw WriteError.writeFailed(url, error)
         }
+    }
+}
+
+private final class PreparedDirectories: @unchecked Sendable {
+    private let lock = NSLock()
+    private var paths: Set<String> = []
+
+    func markIfNeeded(_ path: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard !paths.contains(path) else { return false }
+        paths.insert(path)
+        return true
     }
 }

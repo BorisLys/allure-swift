@@ -110,7 +110,7 @@ By default, files are written to `./allure-results` (relative to the test proces
 - `Allure.configure(directory: URL(fileURLWithPath: "/path/to/dir"))`, or
 - the `ALLURE_RESULTS_DIR` environment variable.
 
-The results directory is cleared once before the first file is written for a test run.
+The results directory is cleared once per process before the first file is written to that directory.
 
 ### Xcode: write results into the project directory
 

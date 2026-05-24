@@ -65,6 +65,24 @@ final class LifecycleTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(secondUUID)-result.json").path))
     }
 
+    func testDoesNotClearDirectoryAgainForNewLifecycleWithSameDirectory() throws {
+        let firstUUID = UUID().uuidString.lowercased()
+        lifecycle.scheduleTest(TestResult(uuid: firstUUID, name: "firstTest"))
+        lifecycle.startTest(uuid: firstUUID)
+        lifecycle.stopTest(uuid: firstUUID, status: .passed)
+        lifecycle.flush()
+
+        let nextLifecycle = AllureLifecycle(directory: ResultsDirectory(url: tmpDir))
+        let secondUUID = UUID().uuidString.lowercased()
+        nextLifecycle.scheduleTest(TestResult(uuid: secondUUID, name: "secondTest"))
+        nextLifecycle.startTest(uuid: secondUUID)
+        nextLifecycle.stopTest(uuid: secondUUID, status: .passed)
+        nextLifecycle.flush()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(firstUUID)-result.json").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(secondUUID)-result.json").path))
+    }
+
     func testNestedStepsTree() throws {
         let uuid = UUID().uuidString.lowercased()
         lifecycle.scheduleTest(TestResult(uuid: uuid, name: "stepsTest"))
