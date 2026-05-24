@@ -1,0 +1,9 @@
+.build/
+.swiftpm/
+Packages/
+xcuserdata/
+DerivedData/
+.DS_Store
+*.xcodeproj/
+allure-results/
+allure-report/
