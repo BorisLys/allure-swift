@@ -10,6 +10,8 @@ public final class FileWriter: @unchecked Sendable {
     private let encoder: JSONEncoder
     private let queue: DispatchQueue
     private let fileManager = FileManager.default
+    private let preparationLock = NSLock()
+    private var preparedDirectory = false
 
     public init(directory: ResultsDirectory, encoder: JSONEncoder = JSONEncoderFactory.make()) {
         self.directory = directory
@@ -20,19 +22,19 @@ public final class FileWriter: @unchecked Sendable {
     public var directoryURL: URL { directory.url }
 
     public func write(testResult: TestResult) throws {
-        try ensureDirectory()
+        try prepareDirectoryIfNeeded()
         let url = directory.url.appendingPathComponent("\(testResult.uuid)-result.json", isDirectory: false)
         try writeJSON(testResult, to: url)
     }
 
     public func write(container: TestResultContainer) throws {
-        try ensureDirectory()
+        try prepareDirectoryIfNeeded()
         let url = directory.url.appendingPathComponent("\(container.uuid)-container.json", isDirectory: false)
         try writeJSON(container, to: url)
     }
 
     public func write(attachmentData: Data, source: String) throws {
-        try ensureDirectory()
+        try prepareDirectoryIfNeeded()
         let url = directory.url.appendingPathComponent(source, isDirectory: false)
         do {
             try attachmentData.write(to: url, options: .atomic)
@@ -42,7 +44,7 @@ public final class FileWriter: @unchecked Sendable {
     }
 
     public func writeEnvironment(_ env: EnvironmentInfo) throws {
-        try ensureDirectory()
+        try prepareDirectoryIfNeeded()
         let url = directory.url.appendingPathComponent("environment.properties", isDirectory: false)
         let data = Data(env.render().utf8)
         do {
@@ -53,13 +55,13 @@ public final class FileWriter: @unchecked Sendable {
     }
 
     public func writeExecutor(_ executor: ExecutorInfo) throws {
-        try ensureDirectory()
+        try prepareDirectoryIfNeeded()
         let url = directory.url.appendingPathComponent("executor.json", isDirectory: false)
         try writeJSON(executor, to: url)
     }
 
     public func writeCategories(_ categories: [Category]) throws {
-        try ensureDirectory()
+        try prepareDirectoryIfNeeded()
         let url = directory.url.appendingPathComponent("categories.json", isDirectory: false)
         try writeJSON(categories, to: url)
     }
@@ -72,10 +74,23 @@ public final class FileWriter: @unchecked Sendable {
         queue.sync { }
     }
 
-    private func ensureDirectory() throws {
-        if !fileManager.fileExists(atPath: directory.url.path) {
+    private func prepareDirectoryIfNeeded() throws {
+        preparationLock.lock()
+        defer { preparationLock.unlock() }
+        guard !preparedDirectory else { return }
+
+        if fileManager.fileExists(atPath: directory.url.path) {
+            let contents = try fileManager.contentsOfDirectory(
+                at: directory.url,
+                includingPropertiesForKeys: nil
+            )
+            for item in contents {
+                try fileManager.removeItem(at: item)
+            }
+        } else {
             try directory.ensureExists()
         }
+        preparedDirectory = true
     }
 
     private func writeJSON<T: Encodable>(_ value: T, to url: URL) throws {

@@ -110,6 +110,8 @@ By default, files are written to `./allure-results` (relative to the test proces
 - `Allure.configure(directory: URL(fileURLWithPath: "/path/to/dir"))`, or
 - the `ALLURE_RESULTS_DIR` environment variable.
 
+The results directory is cleared once before the first file is written for a test run.
+
 ### Xcode: write results into the project directory
 
 When running on iOS/tvOS Simulator, the test process does not inherit `SOURCE_ROOT` from the xcodebuild environment. The reliable way to route results to your project folder is to set the env var in the scheme:

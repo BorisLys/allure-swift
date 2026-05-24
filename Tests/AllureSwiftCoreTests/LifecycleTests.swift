@@ -35,6 +35,36 @@ final class LifecycleTests: XCTestCase {
         XCTAssertNotNil(decoded.stop)
     }
 
+    func testClearsExistingResultsDirectoryBeforeFirstWrite() throws {
+        let staleFile = tmpDir.appendingPathComponent("stale-result.json")
+        try Data("stale".utf8).write(to: staleFile)
+
+        let uuid = UUID().uuidString.lowercased()
+        lifecycle.scheduleTest(TestResult(uuid: uuid, name: "freshTest"))
+        lifecycle.startTest(uuid: uuid)
+        lifecycle.stopTest(uuid: uuid, status: .passed)
+        lifecycle.flush()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: staleFile.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(uuid)-result.json").path))
+    }
+
+    func testDoesNotClearFilesWrittenAfterFirstWrite() throws {
+        let firstUUID = UUID().uuidString.lowercased()
+        lifecycle.scheduleTest(TestResult(uuid: firstUUID, name: "firstTest"))
+        lifecycle.startTest(uuid: firstUUID)
+        lifecycle.stopTest(uuid: firstUUID, status: .passed)
+
+        let secondUUID = UUID().uuidString.lowercased()
+        lifecycle.scheduleTest(TestResult(uuid: secondUUID, name: "secondTest"))
+        lifecycle.startTest(uuid: secondUUID)
+        lifecycle.stopTest(uuid: secondUUID, status: .passed)
+        lifecycle.flush()
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(firstUUID)-result.json").path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(secondUUID)-result.json").path))
+    }
+
     func testNestedStepsTree() throws {
         let uuid = UUID().uuidString.lowercased()
         lifecycle.scheduleTest(TestResult(uuid: uuid, name: "stepsTest"))
