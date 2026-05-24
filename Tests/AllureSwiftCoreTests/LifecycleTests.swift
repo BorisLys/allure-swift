@@ -35,7 +35,7 @@ final class LifecycleTests: XCTestCase {
         XCTAssertNotNil(decoded.stop)
     }
 
-    func testClearsExistingResultsDirectoryBeforeFirstWrite() throws {
+    func testWritingDoesNotClearExistingResultsDirectory() throws {
         let staleFile = tmpDir.appendingPathComponent("stale-result.json")
         try Data("stale".utf8).write(to: staleFile)
 
@@ -45,11 +45,23 @@ final class LifecycleTests: XCTestCase {
         lifecycle.stopTest(uuid: uuid, status: .passed)
         lifecycle.flush()
 
-        XCTAssertFalse(FileManager.default.fileExists(atPath: staleFile.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: staleFile.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(uuid)-result.json").path))
     }
 
-    func testDoesNotClearFilesWrittenAfterFirstWrite() throws {
+    func testPrepareResultsDirectoryClearsExistingFilesOnce() throws {
+        let staleFile = tmpDir.appendingPathComponent("stale-result.json")
+        try Data("stale".utf8).write(to: staleFile)
+
+        lifecycle.prepareResultsDirectoryForTestRun()
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: staleFile.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.path))
+    }
+
+    func testDoesNotClearFilesWrittenAfterPrepare() throws {
+        lifecycle.prepareResultsDirectoryForTestRun()
+
         let firstUUID = UUID().uuidString.lowercased()
         lifecycle.scheduleTest(TestResult(uuid: firstUUID, name: "firstTest"))
         lifecycle.startTest(uuid: firstUUID)
@@ -65,7 +77,9 @@ final class LifecycleTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: tmpDir.appendingPathComponent("\(secondUUID)-result.json").path))
     }
 
-    func testDoesNotClearDirectoryAgainForNewLifecycleWithSameDirectory() throws {
+    func testDoesNotPrepareDirectoryAgainForNewLifecycleWithSameDirectory() throws {
+        lifecycle.prepareResultsDirectoryForTestRun()
+
         let firstUUID = UUID().uuidString.lowercased()
         lifecycle.scheduleTest(TestResult(uuid: firstUUID, name: "firstTest"))
         lifecycle.startTest(uuid: firstUUID)
@@ -73,6 +87,7 @@ final class LifecycleTests: XCTestCase {
         lifecycle.flush()
 
         let nextLifecycle = AllureLifecycle(directory: ResultsDirectory(url: tmpDir))
+        nextLifecycle.prepareResultsDirectoryForTestRun()
         let secondUUID = UUID().uuidString.lowercased()
         nextLifecycle.scheduleTest(TestResult(uuid: secondUUID, name: "secondTest"))
         nextLifecycle.startTest(uuid: secondUUID)

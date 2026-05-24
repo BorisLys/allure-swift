@@ -5,6 +5,7 @@ public enum Allure {
 
     public static func configure(directory: URL) {
         AllureLifecycle.shared.configure(directory: ResultsDirectory(url: directory))
+        AllureLifecycle.shared.prepareResultsDirectoryForTestRun()
     }
 
     public static var resultsDirectoryURL: URL {

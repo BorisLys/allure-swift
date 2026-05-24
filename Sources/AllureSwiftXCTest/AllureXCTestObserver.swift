@@ -20,6 +20,7 @@ public final class AllureXCTestObserver: NSObject, XCTestObservation, @unchecked
         guard !registered else { return }
         XCTestObservationCenter.shared.addTestObserver(self)
         registered = true
+        AllureLifecycle.shared.prepareResultsDirectoryForTestRun()
     }
 
     public func uuid(for testCase: XCTestCase) -> String? {
@@ -28,6 +29,10 @@ public final class AllureXCTestObserver: NSObject, XCTestObservation, @unchecked
     }
 
     // MARK: - XCTestObservation
+
+    public func testBundleWillStart(_ testBundle: Bundle) {
+        AllureLifecycle.shared.prepareResultsDirectoryForTestRun()
+    }
 
     public func testCaseWillStart(_ testCase: XCTestCase) {
         let uuid = UUID().uuidString.lowercased()

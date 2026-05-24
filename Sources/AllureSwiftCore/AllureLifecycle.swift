@@ -3,6 +3,7 @@ import os
 
 public final class AllureLifecycle: @unchecked Sendable {
     public static let shared = AllureLifecycle()
+    private static let resultsDirectoryCleaner = ResultsDirectoryCleaner()
 
     private struct State {
         var tests: [String: TestRecord] = [:]
@@ -32,6 +33,15 @@ public final class AllureLifecycle: @unchecked Sendable {
 
     public var resultsDirectory: URL {
         lock.withLock { $0.directory.url }
+    }
+
+    public func prepareResultsDirectoryForTestRun() {
+        let directory = lock.withLock { $0.directory }
+        do {
+            try Self.resultsDirectoryCleaner.prepareForTestRun(directory)
+        } catch {
+            Self.logIO(error: error)
+        }
     }
 
     // MARK: - Tests
