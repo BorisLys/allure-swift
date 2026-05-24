@@ -2,13 +2,15 @@ import Foundation
 import Testing
 import AllureSwiftCore
 
-public struct AllureTrait: TestTrait, SuiteTrait, TestScoping, Sendable {
+public struct AllureTrait: TestTrait, SuiteTrait, Sendable {
     public let isRecursive: Bool
 
     public init(isRecursive: Bool = true) {
         self.isRecursive = isRecursive
     }
+}
 
+extension AllureTrait: TestScoping {
     public func scopeProvider(for test: Test, testCase: Test.Case?) -> AllureTrait? {
         return self
     }
@@ -39,7 +41,6 @@ public struct AllureTrait: TestTrait, SuiteTrait, TestScoping, Sendable {
         AllureLifecycle.shared.scheduleTest(result)
         AllureLifecycle.shared.startTest(uuid: uuid)
 
-        // Apply metadata traits attached to this test.
         for trait in test.traits {
             if let metadata = trait as? any AllureMetadataTrait {
                 metadata.apply(testUUID: uuid)
@@ -53,15 +54,12 @@ public struct AllureTrait: TestTrait, SuiteTrait, TestScoping, Sendable {
                 try await function()
             }
         } catch {
-            if Self.isKnownIssueError(error) {
+            if isKnownIssueError(error) {
                 status = .skipped
                 details = StatusDetails(message: String(describing: error))
             } else {
                 status = .failed
-                details = StatusDetails(
-                    message: String(describing: error),
-                    trace: nil
-                )
+                details = StatusDetails(message: String(describing: error), trace: nil)
             }
             AllureLifecycle.shared.stopTest(uuid: uuid, status: status, details: details)
             throw error
@@ -69,7 +67,7 @@ public struct AllureTrait: TestTrait, SuiteTrait, TestScoping, Sendable {
         AllureLifecycle.shared.stopTest(uuid: uuid, status: status, details: details)
     }
 
-    private static func isKnownIssueError(_ error: Error) -> Bool {
+    private func isKnownIssueError(_ error: Error) -> Bool {
         let name = String(describing: type(of: error))
         return name.contains("Skip") || name.contains("KnownIssue")
     }
