@@ -18,7 +18,8 @@ public enum TestMapper {
     public static func map(
         node: TestNode,
         details: TestDetails?,
-        context: Context
+        context: Context,
+        directives: AllureDirectiveParser.Directives = .init()
     ) -> TestResult {
         let testName = node.name
         let bundleName = context.bundleName ?? ""
@@ -38,6 +39,7 @@ public enum TestMapper {
         let startMillis = Int64((start * 1000).rounded())
         let stopMillis = Int64((stop * 1000).rounded())
 
+        // Name-convention labels come first so directive labels can override them.
         var labels = LabelExtractor.extract(testName: methodName, tags: node.tags)
         labels.append(Label(.testClass, value: className))
         labels.append(Label(.testMethod, value: methodName))
@@ -49,19 +51,25 @@ public enum TestMapper {
         if let host = ProcessInfo.processInfo.hostName as String? {
             labels.append(Label(.host, value: host))
         }
+        // Directive labels (from allure.* activities) appended last — dedup happens at report level.
+        labels.append(contentsOf: directives.labels)
+
+        let displayName = directives.nameOverride ?? methodName
 
         let uuid = UUID().uuidString.lowercased()
         return TestResult(
             uuid: uuid,
             historyId: HistoryIdBuilder.build(fullName: fullName),
             fullName: fullName,
-            name: methodName,
+            name: displayName,
+            description: directives.description,
             status: status,
             statusDetails: statusDetails,
             stage: .finished,
             start: startMillis,
             stop: stopMillis,
-            labels: labels
+            labels: labels,
+            links: directives.links
         )
     }
 

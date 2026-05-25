@@ -1,8 +1,10 @@
 # allure-swift
 
-A **post-process converter** that turns Apple's `.xcresult` bundles into [Allure 2](https://allurereport.org/) JSON results.
+A **post-process converter** that turns Apple's `.xcresult` bundles into [Allure 2](https://allurereport.org/) JSON results, with an optional **runtime annotation library** for XCTest (`AllureSwiftXCTest`).
 
-It runs **after** `xcodebuild test` finishes — no runtime hooks, no `XCTestObservation` quirks, no Swift Testing trait wiring, no iOS Simulator scheme/env-var fights. The `.xcresult` bundle is Apple's canonical test output, so reading it after the fact is the cleanest path to Allure reporting on Swift/Apple projects.
+The converter runs **after** `xcodebuild test` finishes — no `XCTestObservation` quirks, no iOS Simulator scheme/env-var fights. The `.xcresult` bundle is Apple's canonical test output, so reading it after the fact is the cleanest path to Allure reporting on Swift/Apple projects.
+
+When you use the `AllureSwiftXCTest` helpers (optional), each call like `allureId(1234)` or `allureStep("Open cart") { … }` writes a hidden `XCTActivity` into the `.xcresult` bundle during the test run. The converter reads those activities and turns them into Allure labels, links, name overrides, and step trees — bridging runtime intent with post-process output.
 
 ```
 xcodebuild test … -resultBundlePath Build/test.xcresult
@@ -37,13 +39,27 @@ dependencies: [
 ],
 ```
 
-Run from anywhere inside the package:
+Run the converter from anywhere inside the package:
 
 ```sh
 swift package --allow-writing-to-directory allure-results \
     plugin allure-xcresult \
     convert Build/test.xcresult \
     --output allure-results
+```
+
+#### Adding runtime annotations to a test target (optional)
+
+If you want to call `allureId`, `allureStep`, etc. from your XCTest test files, add `AllureSwiftXCTest` as a dependency of your **test target**:
+
+```swift
+.testTarget(
+    name: "MyAppTests",
+    dependencies: [
+        "MyApp",
+        .product(name: "AllureSwiftXCTest", package: "allure-swift"),
+    ]
+),
 ```
 
 ### Option 2 — Build the CLI from source
@@ -154,9 +170,75 @@ allure-xcresult convert build/test.xcresult -o allure-results --clean
 allure generate allure-results -o allure-report --clean
 ```
 
+## Runtime annotations — `AllureSwiftXCTest`
+
+Import the library in your test file, then call the helpers at the top of each test method. Each call writes an invisible `XCTActivity` into the `.xcresult` bundle; the converter reads them and produces the matching Allure metadata.
+
+```swift
+import XCTest
+import AllureSwiftXCTest
+
+final class CheckoutTests: XCTestCase {
+
+    func testHappyPath() throws {
+        // Identity & labels
+        allureId(1234)
+        allureName("Checkout — happy path")
+        allureEpic("Cart")
+        allureFeature("Checkout")
+        allureStory("Place order")
+        allureSeverity(.critical)
+        allureOwner("b.lysikov")
+        allureTag("smoke")
+        allureLayer("api")
+
+        // Links
+        allureTms(name: "PROJ-42", url: "https://jira.example.com/PROJ-42")
+        allureIssue(name: "BUG-7", url: "https://jira.example.com/BUG-7")
+
+        // Steps
+        let cart = try allureStep("Open cart") {
+            try openCart()
+        }
+        try allureStep("Add item") {
+            try cart.addItem("Widget")
+        }
+        try allureStep("Place order") {
+            let order = try cart.checkout()
+            XCTAssertEqual(order.status, .confirmed)
+        }
+    }
+}
+```
+
+### Available helpers
+
+| Method | Allure effect |
+|--------|---------------|
+| `allureId(_ id: Int/String)` | `AS_ID` label |
+| `allureName(_ name: String)` | Overrides test name in report |
+| `allureDescription(_ text: String)` | Test description |
+| `allureSeverity(_ level: AllureSeverity)` | `severity` label (`blocker/critical/normal/minor/trivial`) |
+| `allureEpic(_ value: String)` | `epic` label |
+| `allureFeature(_ value: String)` | `feature` label |
+| `allureStory(_ value: String)` | `story` label |
+| `allureOwner(_ value: String)` | `owner` label |
+| `allureTag(_ value: String)` | `tag` label |
+| `allureLayer(_ value: String)` | `layer` label |
+| `allureSuite/ParentSuite/SubSuite(_ value: String)` | suite hierarchy labels |
+| `allureLabel(_ name: String, value: String)` | Arbitrary label |
+| `allureLink(name:url:type:)` | Generic link |
+| `allureIssue(name:url:)` | Issue tracker link |
+| `allureTms(name:url:)` | TMS link |
+| `allureStep(_ name:) { … }` | Named step with pass/fail status |
+| `allureAttachment(name:data:type:)` | Binary attachment |
+| `allureAttachment(name:string:type:)` | Text attachment |
+
+Steps nest naturally — calling `allureStep` inside another `allureStep` produces a sub-step tree in the report.
+
 ## Metadata conventions
 
-Because the converter is post-process, you attach Allure metadata to a test by **naming** it. The label extractor recognises two notations and uses whichever fits the framework you're writing tests in.
+You can also attach Allure metadata **without a library dependency** by encoding it directly in the test name. The label extractor recognises two notations and uses whichever fits the framework you're writing tests in.
 
 ### Recognised prefixes
 
@@ -264,17 +346,18 @@ print("Wrote \(result.testsConverted) tests")
 
 ## Migration from v1
 
-v1 was a runtime SDK with `Allure.step`, `@Test(.allure)` traits, `AllureXCTest.bootstrap()`, etc. None of that survives v2.
+v1 was a runtime SDK with `Allure.step`, `@Test(.allure)` traits, `AllureXCTest.bootstrap()`, `AllureTestCase`, etc. v2 is a clean break.
 
-To migrate:
+**Migration steps:**
 
-1. **Remove** `AllureSwift`, `AllureSwiftCore`, `AllureSwiftXCTest`, `AllureSwiftTesting` from your `Package.swift` test target dependencies. Drop the umbrella import lines from your test files.
-2. **Remove** runtime calls: `Allure.step(...)`, `Allure.parameter(...)`, the `.allure` trait on `@Test`, the `AllureTestCase` base class, `AllureXCTest.bootstrap()` calls.
+1. **Remove** `AllureSwift`, `AllureSwiftCore` (v1), `AllureSwiftXCTest` (v1), `AllureSwiftTesting` from your `Package.swift` test target dependencies. Drop the umbrella import lines from your test files.
+2. **Remove** old runtime calls: `Allure.step(...)`, `Allure.parameter(...)`, the `.allure` trait on `@Test`, the `AllureTestCase` base class, `AllureXCTest.bootstrap()` calls.
 3. **Add** the v2 package dependency (see Install).
 4. **Add** `-resultBundlePath Build/test.xcresult` to your `xcodebuild test` invocation.
 5. **Add** an `allure-xcresult convert …` step after the test run.
+6. **Optional:** add `AllureSwiftXCTest` (v2) as a test target dependency and replace old `Allure.step(...)` calls with the new `allureStep(...)` helpers.
 
-Steps you previously wrote with `Allure.step("Open cart")` are no longer needed — the converter pulls activities directly from `xcresult`, so XCUI test activities become Allure steps automatically.
+XCUI test activities (button taps, swipes, assertions) become Allure steps automatically — no step annotations needed for UI tests.
 
 ## License
 

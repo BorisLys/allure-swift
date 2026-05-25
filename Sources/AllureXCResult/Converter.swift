@@ -81,7 +81,11 @@ public struct Converter {
             let details = try? bundle.details(forTestURL: testURL)
             let activities = try? bundle.activities(forTestURL: testURL)
 
-            var result = TestMapper.map(node: testNode, details: details, context: context)
+            // Parse allure.* directive activities written by AllureSwiftXCTest helpers.
+            let allActivityList = activities.map { a in (a.testRuns ?? []).flatMap { $0.activities ?? [] } } ?? []
+            let directives = AllureDirectiveParser.parse(activities: allActivityList)
+
+            var result = TestMapper.map(node: testNode, details: details, context: context, directives: directives)
             if let activities {
                 result.steps = ActivityMapper.map(activities: activities)
             }

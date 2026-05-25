@@ -21,8 +21,12 @@ public enum ActivityMapper {
     }
 
     /// Recursively maps a list of activities to step results.
+    /// Activities whose title is an Allure directive (`allure.*`) are skipped —
+    /// they are metadata markers, not user-visible steps.
     public static func mapActivities(_ activities: [Activity]) -> [StepResult] {
-        activities.map { map(activity: $0) }
+        activities
+            .filter { !AllureDirectiveParser.isDirective($0.title) }
+            .map { map(activity: $0) }
     }
 
     /// Single activity → single step (steps nest recursively).
