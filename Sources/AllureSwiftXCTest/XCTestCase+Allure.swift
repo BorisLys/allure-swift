@@ -22,7 +22,6 @@ import AllureSwiftCore
 ///     }
 /// }
 /// ```
-@MainActor
 extension XCTestCase {
 
     // MARK: - Identity

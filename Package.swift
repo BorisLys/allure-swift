@@ -25,7 +25,13 @@ let package = Package(
         .target(
             name: "AllureSwiftXCTest",
             dependencies: ["AllureSwiftCore"],
-            path: "Sources/AllureSwiftXCTest"
+            path: "Sources/AllureSwiftXCTest",
+            swiftSettings: [
+                // XCTContext.runActivity is @MainActor since Xcode 16.
+                // We trust XCTest always runs on the main thread and bypass
+                // strict-concurrency checking so callers need no @MainActor annotation.
+                .swiftLanguageMode(.v5),
+            ]
         ),
         .target(
             name: "AllureSwiftTesting",
