@@ -5,13 +5,15 @@ let package = Package(
     name: "allure-swift",
     platforms: [
         .macOS(.v13),
-        .iOS(.v16),
     ],
     products: [
-        .library(name: "AllureSwift", targets: ["AllureSwift"]),
         .library(name: "AllureSwiftCore", targets: ["AllureSwiftCore"]),
-        .library(name: "AllureSwiftXCTest", targets: ["AllureSwiftXCTest"]),
-        .library(name: "AllureSwiftTesting", targets: ["AllureSwiftTesting"]),
+        .library(name: "AllureXCResult", targets: ["AllureXCResult"]),
+        .executable(name: "allure-xcresult", targets: ["allure-xcresult"]),
+        .plugin(name: "AllureXCResultPlugin", targets: ["AllureXCResultPlugin"]),
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
     ],
     targets: [
         .target(
@@ -19,19 +21,36 @@ let package = Package(
             path: "Sources/AllureSwiftCore"
         ),
         .target(
-            name: "AllureSwiftXCTest",
+            name: "XCResultParser",
             dependencies: ["AllureSwiftCore"],
-            path: "Sources/AllureSwiftXCTest"
+            path: "Sources/XCResultParser"
         ),
         .target(
-            name: "AllureSwiftTesting",
-            dependencies: ["AllureSwiftCore"],
-            path: "Sources/AllureSwiftTesting"
+            name: "AllureXCResult",
+            dependencies: ["AllureSwiftCore", "XCResultParser"],
+            path: "Sources/AllureXCResult"
         ),
-        .target(
-            name: "AllureSwift",
-            dependencies: ["AllureSwiftCore", "AllureSwiftXCTest", "AllureSwiftTesting"],
-            path: "Sources/AllureSwift"
+        .executableTarget(
+            name: "allure-xcresult",
+            dependencies: [
+                "AllureXCResult",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            path: "Sources/allure-xcresult"
+        ),
+        .plugin(
+            name: "AllureXCResultPlugin",
+            capability: .command(
+                intent: .custom(
+                    verb: "allure-xcresult",
+                    description: "Convert .xcresult bundle to Allure JSON results"
+                ),
+                permissions: [
+                    .writeToPackageDirectory(reason: "Writes allure-results/ inside the package directory"),
+                ]
+            ),
+            dependencies: [.target(name: "allure-xcresult")],
+            path: "Plugins/AllureXCResultPlugin"
         ),
         .testTarget(
             name: "AllureSwiftCoreTests",
@@ -39,14 +58,16 @@ let package = Package(
             path: "Tests/AllureSwiftCoreTests"
         ),
         .testTarget(
-            name: "AllureSwiftTestingTests",
-            dependencies: ["AllureSwiftCore", "AllureSwiftTesting"],
-            path: "Tests/AllureSwiftTestingTests"
+            name: "XCResultParserTests",
+            dependencies: ["XCResultParser"],
+            path: "Tests/XCResultParserTests",
+            resources: [.copy("Resources")]
         ),
         .testTarget(
-            name: "AllureSwiftXCTestTests",
-            dependencies: ["AllureSwiftCore", "AllureSwiftXCTest"],
-            path: "Tests/AllureSwiftXCTestTests"
+            name: "AllureXCResultTests",
+            dependencies: ["AllureXCResult"],
+            path: "Tests/AllureXCResultTests",
+            resources: [.copy("Resources")]
         ),
     ],
     swiftLanguageModes: [.v6]

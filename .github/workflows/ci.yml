@@ -25,8 +25,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Show Swift version
-        run: swift --version
+      - name: Show toolchain versions
+        run: |
+          swift --version
+          xcrun xcresulttool --help | head -3
 
       - name: Validate package manifest
         run: swift package describe
@@ -36,3 +38,10 @@ jobs:
 
       - name: Run tests
         run: swift test
+
+      - name: Smoke test CLI against fixture
+        run: |
+          swift run allure-xcresult convert Tests/AllureXCResultTests/Resources/sample.xcresult \
+            -o /tmp/smoke-allure-results --clean --verbose
+          test -d /tmp/smoke-allure-results
+          ls /tmp/smoke-allure-results

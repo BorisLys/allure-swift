@@ -1,194 +1,230 @@
 # allure-swift
 
-A Swift Package Manager library that generates [Allure Report](https://allurereport.org/) result files from Swift tests. Works with both **XCTest** and **Swift Testing**, producing JSON in the format the Allure CLI consumes.
+A **post-process converter** that turns Apple's `.xcresult` bundles into [Allure 2](https://allurereport.org/) JSON results.
 
-## Features
+It runs **after** `xcodebuild test` finishes — no runtime hooks, no `XCTestObservation` quirks, no Swift Testing trait wiring, no iOS Simulator scheme/env-var fights. The `.xcresult` bundle is Apple's canonical test output, so reading it after the fact is the cleanest path to Allure reporting on Swift/Apple projects.
 
-- Native Swift 6, fully `Sendable`, strict-concurrency clean.
-- XCTest integration: automatic lifecycle via `XCTestObservation`.
-- XCTest UI failure diagnostics: assertion details, UI hierarchy, and a screenshot are attached on failed tests when available.
-- Swift Testing integration: traits (`.allure`, `.epic`, `.feature`, …) plus `TestScoping`.
-- Steps (sync + async, arbitrarily nested), attachments, labels, links, parameters.
-- Fixtures via `TestResultContainer` (befores/afters).
-- `environment.properties`, `executor.json`, `categories.json` writers.
-- Output directory configurable via `ALLURE_RESULTS_DIR` env or `Allure.configure(directory:)`.
+```
+xcodebuild test … -resultBundlePath Build/test.xcresult
+       │
+       ▼
+allure-xcresult convert Build/test.xcresult --output allure-results
+       │
+       ▼
+allure generate allure-results --output allure-report
+```
+
+## Status
+
+v2.0 — full rewrite of the v1 runtime SDK (lifecycle, traits, observer) as a CLI/library that parses `xcresult` bundles via `xcrun xcresulttool` and writes Allure JSON.
 
 ## Requirements
 
-- Swift 6.0 / Xcode 16+
-- macOS 13+, iOS 16+
+- **macOS** (any version that runs Xcode 16+)
+- **Swift 6** (Xcode 16+) — only needed to build the converter; your tested code can target any platform Xcode supports
+- **Xcode Command Line Tools** for `xcrun xcresulttool`
+- **Allure CLI** for rendering reports (`brew install allure`) — optional, only required if you want to generate HTML
 
-## Installation
+## Install
 
-In `Package.swift`:
+### Option 1 — SPM Command Plugin (recommended)
+
+Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/your-org/allure-swift.git", branch: "main"),
+    .package(url: "https://github.com/BorisLys/allure-swift.git", from: "2.0.0"),
 ],
 ```
 
-Then add the products you need to your test target:
-
-```swift
-.testTarget(
-    name: "MyAppTests",
-    dependencies: [
-        .product(name: "AllureSwiftXCTest", package: "allure-swift"),
-        // and/or
-        .product(name: "AllureSwiftTesting", package: "allure-swift"),
-    ]
-),
-```
-
-Or pull the umbrella `AllureSwift` product to get both.
-
-## Quick start — XCTest
-
-```swift
-import XCTest
-import AllureSwiftCore
-import AllureSwiftXCTest
-
-final class CheckoutTests: AllureTestCase {
-    func testHappyPath() throws {
-        Allure.epic("Checkout")
-        Allure.feature("Cart")
-        Allure.severity(.critical)
-        Allure.id(1234)
-
-        try Allure.step("Add item to cart") {
-            // ...
-        }
-        try Allure.step("Pay") {
-            Allure.parameter(name: "method", value: "card")
-            try Allure.step("Submit form") {
-                // ...
-            }
-        }
-
-        Allure.addAttachment(name: "summary", type: .textPlain, content: "order ok")
-    }
-}
-```
-
-If you cannot subclass `AllureTestCase`, call `Allure.bind(self)` in your `setUp()` and `Allure.unbind()` in `tearDown()`. Either way the observer is auto-registered on first use; you can also call `AllureXCTest.bootstrap()` explicitly from your test bundle's principal class.
-
-## Quick start — Swift Testing
-
-```swift
-import Testing
-import AllureSwiftCore
-import AllureSwiftTesting
-
-@Suite("Checkout", .allure)
-struct CheckoutTests {
-    @Test(
-        .epic("Checkout"),
-        .feature("Cart"),
-        .severity(.critical),
-        .allureID(1234),
-        .link(name: "ticket", url: "https://tracker/ABC-1", type: .issue)
-    )
-    func happyPath() async throws {
-        try await Allure.step("Add item to cart") { /* ... */ }
-        try await Allure.step("Pay") {
-            Allure.parameter(name: "method", value: "card")
-            try await Allure.step("Submit form") { /* ... */ }
-        }
-        Allure.addAttachment(name: "summary", type: .textPlain, content: "order ok")
-    }
-}
-```
-
-The `.allure` trait must be present (on the test or its enclosing suite) for an Allure result file to be produced.
-
-## Output
-
-By default, files are written to `./allure-results` (relative to the test process's working directory). Override with:
-
-- `Allure.configure(directory: URL(fileURLWithPath: "/path/to/dir"))`, or
-- the `ALLURE_RESULTS_DIR` environment variable.
-
-The results directory is cleared once per process when it is configured or the XCTest observer starts the test run. File writes never clear the directory.
-
-### Xcode: write results into the project directory
-
-When running on iOS/tvOS Simulator, the test process does not inherit `SOURCE_ROOT` from the xcodebuild environment. The reliable way to route results to your project folder is to set the env var in the scheme:
-
-1. In Xcode, open **Product → Scheme → Edit Scheme…** (or ⌘<)
-2. Select the **Test** action → **Arguments** tab → **Environment Variables**
-3. Add:
-
-   | Name | Value |
-   |---|---|
-   | `ALLURE_RESULTS_DIR` | `$(SOURCE_ROOT)/allure-results` |
-
-The `$(SOURCE_ROOT)` macro is resolved by Xcode before the variable is injected into the test runner, so results land at `<YourProject>/allure-results/` regardless of simulator.
-
-To automate this via the `.xcscheme` file instead, add the following inside the `<TestAction>` element:
-
-```xml
-<EnvironmentVariables>
-    <EnvironmentVariable
-        key   = "ALLURE_RESULTS_DIR"
-        value = "$(SOURCE_ROOT)/allure-results"
-        isEnabled = "YES">
-    </EnvironmentVariable>
-</EnvironmentVariables>
-```
-
-Files produced:
-
-| File | Contents |
-|---|---|
-| `<uuid>-result.json` | one per test |
-| `<uuid>-container.json` | one per fixture container |
-| `<uuid>-attachment.<ext>` | one per attachment |
-| `environment.properties` | optional, key=value lines |
-| `executor.json` | optional |
-| `categories.json` | optional |
-
-Run the Allure CLI on the directory to render the report:
+Run from anywhere inside the package:
 
 ```sh
-allure generate allure-results -o allure-report --clean
+swift package --allow-writing-to-directory allure-results \
+    plugin allure-xcresult \
+    convert Build/test.xcresult \
+    --output allure-results
+```
+
+### Option 2 — Build the CLI from source
+
+```sh
+git clone https://github.com/BorisLys/allure-swift.git
+cd allure-swift
+swift build -c release
+cp .build/release/allure-xcresult /usr/local/bin/   # or anywhere on PATH
+```
+
+Useful for plain `.xcodeproj` setups that don't have their own `Package.swift`.
+
+## Usage
+
+```sh
+# 1. Run tests and capture an xcresult bundle.
+xcodebuild test \
+    -project SwiftRadio.xcodeproj \
+    -scheme SwiftRadioTests \
+    -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
+    -resultBundlePath Build/test.xcresult
+
+# 2. Convert to Allure JSON.
+allure-xcresult convert Build/test.xcresult --output allure-results
+
+# 3. Render the report.
+allure generate allure-results --output allure-report --clean
 allure open allure-report
 ```
 
-## Labels reference
+### CLI flags
 
-The library exposes well-known Allure labels through `LabelName`:
+```
+allure-xcresult convert <bundle> [options]
 
-| `LabelName` | JSON `name` |
-|---|---|
-| `.epic` | `epic` |
-| `.feature` | `feature` |
-| `.story` | `story` |
-| `.severity` | `severity` |
-| `.tag` | `tag` |
-| `.owner` | `owner` |
-| `.suite` / `.parentSuite` / `.subSuite` | `suite` / `parentSuite` / `subSuite` |
-| `.host` / `.thread` | `host` / `thread` |
-| `.framework` / `.language` / `.package` | `framework` / `language` / `package` |
-| `.testClass` / `.testMethod` | `testClass` / `testMethod` |
-| `.allureId` | `AS_ID` |
-| `.layer` / `.lead` | `layer` / `lead` |
+ARGUMENTS:
+  <bundle>                Path to the .xcresult bundle.
 
-Helpers `Allure.epic(_:)`, `Allure.feature(_:)`, etc. write these directly. For arbitrary labels use `Allure.label(name:value:)`.
+OPTIONS:
+  -o, --output <dir>      Output directory for allure-results (default: ./allure-results).
+  --clean                 Wipe the output directory before writing.
+  --no-attachments        Skip attachment export and copy.
+  -v, --verbose           Print per-test progress to stderr.
+  -h, --help              Show help.
+```
 
-## Architecture
+## CI/CD recipes
 
-The package is split into four targets so consumers pull only what they need:
+### GitHub Actions
 
-| Target | What it gives you |
-|---|---|
-| `AllureSwiftCore` | Models, lifecycle, writer, `Allure` facade, context propagation. No framework deps. |
-| `AllureSwiftXCTest` | `AllureXCTestObserver`, `AllureTestCase` base class, `AllureXCTest.bootstrap()`. |
-| `AllureSwiftTesting` | `AllureTrait` (`TestScoping`), metadata traits, `Trait.allure` / `.epic` / … helpers. |
-| `AllureSwift` | Umbrella that re-exports all three. |
+```yaml
+name: tests
+on: [push, pull_request]
+jobs:
+  ios-tests:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project MyApp.xcodeproj \
+            -scheme MyAppTests \
+            -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
+            -resultBundlePath build/test.xcresult
+      - name: Convert to Allure
+        run: |
+          swift package --allow-writing-to-directory allure-results \
+            plugin allure-xcresult convert build/test.xcresult \
+            --output allure-results --clean
+      - uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
 
-Lifecycle state is kept in `AllureLifecycle` (a `final class` guarded by `OSAllocatedUnfairLock`) so calls from sync XCTest code don't need `await`. The current-test identifier is propagated via a `@TaskLocal` for Swift Testing and `Thread.current.threadDictionary` for XCTest; `AllureContext.current` checks both.
+      # Optional: render HTML and publish to Pages.
+      - name: Generate Allure report
+        run: |
+          brew install allure
+          allure generate allure-results -o allure-report --clean
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: allure-report
+```
+
+### Fastlane
+
+```ruby
+lane :tests do
+  scan(
+    project: "MyApp.xcodeproj",
+    scheme: "MyAppTests",
+    result_bundle: true,
+    output_directory: "build"
+  )
+  sh "swift package --allow-writing-to-directory allure-results " \
+     "plugin allure-xcresult convert ../build/MyApp.test_result " \
+     "--output ../allure-results --clean"
+end
+```
+
+### Plain shell (any CI)
+
+```sh
+xcodebuild test … -resultBundlePath build/test.xcresult
+allure-xcresult convert build/test.xcresult -o allure-results --clean
+allure generate allure-results -o allure-report --clean
+```
+
+## Metadata conventions
+
+Because the converter is post-process, you opt into Allure metadata by **naming** your tests. The label extractor scans each test method name (and, where available, Swift Testing `@Tag` values) for these patterns:
+
+| Token in test name      | Allure label   |
+|-------------------------|----------------|
+| `AllureID-1234`         | `AS_ID = 1234` |
+| `Epic-Cart`             | `epic`         |
+| `Feature-Checkout`      | `feature`      |
+| `Story-EmptyState`      | `story`        |
+| `Severity-critical`     | `severity`     |
+| `Owner-blysikov`        | `owner`        |
+| `Tag-smoke`             | `tag`          |
+| `Layer-unit`            | `layer`        |
+
+Tokens are matched case-insensitively and separated by `_`, ` `, `,`, `;`, `/`. Either `-` or `=` works as the prefix/value delimiter.
+
+**Example test method:**
+
+```swift
+func test_AllureID-1234_Epic-Cart_Feature-Checkout_Severity-critical_happyPath() { … }
+```
+
+After conversion, the result file carries four labels (`AS_ID`, `epic`, `feature`, `severity`) plus the always-emitted `testClass`, `testMethod`, `framework`, `language`, `package`, `host`.
+
+Tests without any tokens still produce valid Allure results — they just won't have the optional labels.
+
+## Output layout
+
+Per Allure 2 spec, the output directory contains:
+
+| File                          | Contents                          |
+|-------------------------------|-----------------------------------|
+| `<uuid>-result.json`          | One per test case                 |
+| `<uuid>-container.json`       | One per fixture container (future)|
+| `<uuid>-attachment.<ext>`     | One per copied attachment         |
+| `environment.properties`      | Device / OS / build identifiers   |
+
+The UUID is generated fresh per run. `historyId` is a SHA-256 of the full test name, so trend data is stable across runs.
+
+## Library usage (advanced)
+
+If you want to embed conversion inside a larger Swift tool:
+
+```swift
+import AllureXCResult
+
+let converter = try Converter(
+    bundleURL: URL(fileURLWithPath: "Build/test.xcresult"),
+    outputDir: URL(fileURLWithPath: "allure-results"),
+    options: ConverterOptions(includeAttachments: true, cleanOutputDirectory: true)
+)
+let result = try converter.run()
+print("Wrote \(result.testsConverted) tests")
+```
+
+`XCResultParser` exposes the lower-level Codable schema (`TestsTree`, `TestSummary`, `TestDetails`, `TestActivities`, `AttachmentManifest`) and a Process wrapper (`XCResultTool`) if you need direct access to `xcresulttool` output.
+
+## Migration from v1
+
+v1 was a runtime SDK with `Allure.step`, `@Test(.allure)` traits, `AllureXCTest.bootstrap()`, etc. None of that survives v2.
+
+To migrate:
+
+1. **Remove** `AllureSwift`, `AllureSwiftCore`, `AllureSwiftXCTest`, `AllureSwiftTesting` from your `Package.swift` test target dependencies. Drop the umbrella import lines from your test files.
+2. **Remove** runtime calls: `Allure.step(...)`, `Allure.parameter(...)`, the `.allure` trait on `@Test`, the `AllureTestCase` base class, `AllureXCTest.bootstrap()` calls.
+3. **Add** the v2 package dependency (see Install).
+4. **Add** `-resultBundlePath Build/test.xcresult` to your `xcodebuild test` invocation.
+5. **Add** an `allure-xcresult convert …` step after the test run.
+
+Steps you previously wrote with `Allure.step("Open cart")` are no longer needed — the converter pulls activities directly from `xcresult`, so XCUI test activities become Allure steps automatically.
 
 ## License
 
