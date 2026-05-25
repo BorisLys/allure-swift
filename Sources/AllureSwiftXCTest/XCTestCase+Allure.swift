@@ -1,13 +1,5 @@
 import XCTest
-
-/// Severity levels matching Allure report values.
-public enum AllureSeverity: String, Sendable, CaseIterable {
-    case blocker
-    case critical
-    case normal
-    case minor
-    case trivial
-}
+import AllureSwiftCore
 
 /// XCTestCase helpers that embed Allure metadata as XCTActivity entries.
 ///
@@ -62,7 +54,8 @@ extension XCTestCase {
         writeDirective("allure.label.\(name):\(value)")
     }
 
-    @nonobjc public func allureSeverity(_ level: AllureSeverity) {
+    /// Sets test severity. Uses `Severity` from `AllureSwiftCore`.
+    @nonobjc public func allureSeverity(_ level: Severity) {
         writeDirective("allure.label.severity:\(level.rawValue)")
     }
 

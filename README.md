@@ -236,6 +236,63 @@ final class CheckoutTests: XCTestCase {
 
 Steps nest naturally — calling `allureStep` inside another `allureStep` produces a sub-step tree in the report.
 
+## Runtime annotations — `AllureSwiftTesting`
+
+Add `AllureSwiftTesting` to your test target and use trait dot-syntax on `@Test` and `@Suite`:
+
+```swift
+dependencies: [
+    .product(name: "AllureSwiftTesting", package: "allure-swift"),
+]
+```
+
+```swift
+import Testing
+import AllureSwiftTesting
+
+@Suite(.parentSuite("Billing"), .epic("Cart"))
+struct CheckoutTests {
+
+    @Test(.allureId(42), .feature("Checkout"), .story("Place order"), .severity(.critical))
+    func happyPath() async throws {
+        // No step helpers — use native #expect / #require
+        #expect(someValue == expected)
+    }
+
+    @Test(.allureId(43), .severity(.minor), .owner("b.lysikov"),
+          .tms(name: "PROJ-43", url: "https://jira.example.com/PROJ-43"))
+    func emptyCart() async throws { … }
+}
+```
+
+### How it works
+
+Each trait calls `prepare(for:)` before the test body runs, writing a hidden `allure.*` XCTActivity directive into the xcresult bundle. The converter reads those activities via `AllureDirectiveParser` — the same pipeline as `AllureSwiftXCTest`. Directive activities are filtered from the Allure step list so they never appear as steps in the report.
+
+Each trait also exposes its directive as a `Comment` (`var comments: [Comment]`), which appears in Xcode's test output alongside the test name.
+
+### Available traits
+
+| Trait | Allure effect |
+|-------|---------------|
+| `.allureId(_ id: Int/String)` | `AS_ID` label |
+| `.allureName(_ name: String)` | Overrides test name in report |
+| `.allureDescription(_ text: String)` | Test description |
+| `.severity(_ level: Severity)` | `severity` label (`blocker/critical/normal/minor/trivial`) |
+| `.epic(_ value: String)` | `epic` label |
+| `.feature(_ value: String)` | `feature` label |
+| `.story(_ value: String)` | `story` label |
+| `.owner(_ value: String)` | `owner` label |
+| `.allureTag(_ value: String)` | `tag` label |
+| `.layer(_ value: String)` | `layer` label |
+| `.suite/parentSuite/subSuite(_ value: String)` | Suite hierarchy labels |
+| `.allureLabel(_ name: String, value: String)` | Arbitrary label |
+| `.link(name:url:type:)` | Generic link |
+| `.issue(name:url:)` | Issue tracker link |
+| `.tms(name:url:)` | TMS link |
+
+`@Suite` traits that carry `isRecursive == true` (default for `SuiteTrait`) apply to every test inside the suite. All Allure traits default to non-recursive, so each test inherits only what is explicitly declared on it — but you can attach suite-level traits like `.parentSuite` on `@Suite` to set hierarchy labels once for the whole group.
+
 ## Metadata conventions
 
 You can also attach Allure metadata **without a library dependency** by encoding it directly in the test name. The label extractor recognises two notations and uses whichever fits the framework you're writing tests in.

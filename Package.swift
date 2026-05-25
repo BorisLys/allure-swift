@@ -9,6 +9,7 @@ let package = Package(
     products: [
         .library(name: "AllureSwiftCore", targets: ["AllureSwiftCore"]),
         .library(name: "AllureSwiftXCTest", targets: ["AllureSwiftXCTest"]),
+        .library(name: "AllureSwiftTesting", targets: ["AllureSwiftTesting"]),
         .library(name: "AllureXCResult", targets: ["AllureXCResult"]),
         .executable(name: "allure-xcresult", targets: ["allure-xcresult"]),
         .plugin(name: "AllureXCResultPlugin", targets: ["AllureXCResultPlugin"]),
@@ -25,6 +26,11 @@ let package = Package(
             name: "AllureSwiftXCTest",
             dependencies: ["AllureSwiftCore"],
             path: "Sources/AllureSwiftXCTest"
+        ),
+        .target(
+            name: "AllureSwiftTesting",
+            dependencies: ["AllureSwiftCore"],
+            path: "Sources/AllureSwiftTesting"
         ),
         .target(
             name: "XCResultParser",
