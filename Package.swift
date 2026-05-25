@@ -5,6 +5,7 @@ let package = Package(
     name: "allure-swift",
     platforms: [
         .macOS(.v13),
+        .iOS(.v16),
     ],
     products: [
         .library(name: "AllureSwiftCore", targets: ["AllureSwiftCore"]),
