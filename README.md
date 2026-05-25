@@ -156,30 +156,80 @@ allure generate allure-results -o allure-report --clean
 
 ## Metadata conventions
 
-Because the converter is post-process, you opt into Allure metadata by **naming** your tests. The label extractor scans each test method name (and, where available, Swift Testing `@Tag` values) for these patterns:
+Because the converter is post-process, you attach Allure metadata to a test by **naming** it. The label extractor recognises two notations and uses whichever fits the framework you're writing tests in.
 
-| Token in test name      | Allure label   |
-|-------------------------|----------------|
-| `AllureID-1234`         | `AS_ID = 1234` |
-| `Epic-Cart`             | `epic`         |
-| `Feature-Checkout`      | `feature`      |
-| `Story-EmptyState`      | `story`        |
-| `Severity-critical`     | `severity`     |
-| `Owner-blysikov`        | `owner`        |
-| `Tag-smoke`             | `tag`          |
-| `Layer-unit`            | `layer`        |
+### Recognised prefixes
 
-Tokens are matched case-insensitively and separated by `_`, ` `, `,`, `;`, `/`. Either `-` or `=` works as the prefix/value delimiter.
+| Prefix         | Allure label  |
+|----------------|---------------|
+| `AllureID`     | `AS_ID`       |
+| `Epic`         | `epic`        |
+| `Feature`      | `feature`     |
+| `Story`        | `story`       |
+| `Severity`     | `severity`    |
+| `Owner`        | `owner`       |
+| `Tag`          | `tag`         |
+| `Layer`        | `layer`       |
+| `Lead`         | `lead`        |
+| `Suite`, `ParentSuite`, `SubSuite` | `suite`, `parentSuite`, `subSuite` |
 
-**Example test method:**
+Prefixes are matched case-insensitively. Anything that doesn't start with a recognised prefix is ignored, so existing test names keep working.
+
+### XCTest (`func test…()`)
+
+XCTest test methods are Swift identifiers — only letters, digits, and `_` are legal. Use the **camelCase** form: append the value directly to the prefix, separate tokens with `_`.
 
 ```swift
-func test_AllureID-1234_Epic-Cart_Feature-Checkout_Severity-critical_happyPath() { … }
+import XCTest
+
+final class CheckoutTests: XCTestCase {
+    /// AllureID 1234, epic = Cart, feature = Checkout, severity = critical
+    func testHappyPath_EpicCart_FeatureCheckout_SeverityCritical_AllureID1234() {
+        // …
+    }
+
+    /// Tag-only example
+    func testEmptyState_TagSmoke_OwnerBLysikov() {
+        // …
+    }
+}
 ```
 
-After conversion, the result file carries four labels (`AS_ID`, `epic`, `feature`, `severity`) plus the always-emitted `testClass`, `testMethod`, `framework`, `language`, `package`, `host`.
+Greedy match picks the longest known prefix, so `AllureID1234` resolves to `AllureID = 1234` (not `Allure` + `ID1234`).
 
-Tests without any tokens still produce valid Allure results — they just won't have the optional labels.
+### Swift Testing (`@Test`)
+
+Swift Testing accepts a free-form display name, so the cleaner **dashed** form works there. Either put the metadata inside the `@Test(…)` string or attach it via `.tags(...)`.
+
+```swift
+import Testing
+
+@Suite("Checkout")
+struct CheckoutTests {
+
+    @Test("Happy path Epic-Cart Feature-Checkout Severity-critical AllureID-1234")
+    func happyPath() async throws {
+        // …
+    }
+
+    // Tags work too — each tag value is parsed independently.
+    @Test("Empty state", .tags(.epicCart, .severityMinor))
+    func emptyState() async throws {
+        // …
+    }
+}
+
+extension Tag {
+    @Tag static var epicCart: Self          // value reported as "epicCart"
+    @Tag static var severityMinor: Self     // value reported as "severityMinor"
+}
+```
+
+If you prefer dashed values in tags (`"Epic-Cart"`), you can write a literal-string tag — both notations are accepted in tag values.
+
+### Result
+
+After conversion, each test result carries the labels you embedded plus the always-emitted `testClass`, `testMethod`, `framework` (`XCTest`), `language` (`swift`), `package`, and `host`. Tests without any tokens still produce valid Allure results — they just lack the optional labels.
 
 ## Output layout
 

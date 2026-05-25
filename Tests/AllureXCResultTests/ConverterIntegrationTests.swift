@@ -46,12 +46,29 @@ final class ConverterIntegrationTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: outDir.appendingPathComponent("environment.properties").path))
     }
 
-    func testLabelExtractor() {
-        let labels = LabelExtractor.extract(testName: "testCheckout_AllureID-1234_Epic-Cart_Severity-critical_Owner-blysikov")
+    func testLabelExtractorDashed() {
+        let labels = LabelExtractor.extract(testName: "Happy path Epic-Cart Severity-critical AllureID-1234 Owner-blysikov")
         XCTAssertTrue(labels.contains(Label(.allureId, value: "1234")))
         XCTAssertTrue(labels.contains(Label(.epic, value: "Cart")))
         XCTAssertTrue(labels.contains(Label(.severity, value: "critical")))
         XCTAssertTrue(labels.contains(Label(.owner, value: "blysikov")))
+    }
+
+    func testLabelExtractorCamelCase() {
+        let labels = LabelExtractor.extract(testName: "testCheckout_EpicCart_FeatureCart_SeverityCritical_AllureID1234_OwnerBLysikov")
+        XCTAssertTrue(labels.contains(Label(.allureId, value: "1234")))
+        XCTAssertTrue(labels.contains(Label(.epic, value: "Cart")))
+        XCTAssertTrue(labels.contains(Label(.feature, value: "Cart")))
+        XCTAssertTrue(labels.contains(Label(.severity, value: "Critical")))
+        XCTAssertTrue(labels.contains(Label(.owner, value: "BLysikov")))
+    }
+
+    func testLabelExtractorTagsArray() {
+        let labels = LabelExtractor.extract(testName: "happyPath", tags: ["Epic-Cart", "smoke", "Severity-critical"])
+        XCTAssertTrue(labels.contains(Label(.epic, value: "Cart")))
+        XCTAssertTrue(labels.contains(Label(.severity, value: "critical")))
+        // Untagged "smoke" doesn't match any prefix and is ignored.
+        XCTAssertFalse(labels.contains(where: { $0.name == "tag" && $0.value == "smoke" }))
     }
 
     func testStatusMapping() {

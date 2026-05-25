@@ -4,40 +4,50 @@ import XCResultParser
 
 /// Extracts Allure metadata from test naming conventions.
 ///
-/// Supported patterns (case-insensitive) embedded in the test method name
-/// or in Swift Testing `@Tag` values:
+/// Two notations are recognised so the same converter handles both
+/// frameworks:
 ///
-/// - `AllureID-1234`            → label `AS_ID = 1234`
-/// - `Epic-Cart`                → label `epic = Cart`
-/// - `Feature-Checkout`         → label `feature = Checkout`
-/// - `Story-EmptyState`         → label `story = EmptyState`
-/// - `Severity-critical`        → label `severity = critical`
-/// - `Owner-bLysikov`           → label `owner = bLysikov`
-/// - `Tag-smoke`                → label `tag = smoke`
-/// - `Layer-unit`               → label `layer = unit`
+/// **Dashed** — values prefixed with a known label and separated by `-` or
+/// `=`. Suitable for Swift Testing `@Test("…")` display names and
+/// `@Tag` values, both of which accept arbitrary characters.
 ///
-/// Anything not matching a known prefix is ignored.
+/// ```
+/// @Test("Happy path Epic-Cart Severity-critical AllureID-1234")
+/// ```
+///
+/// **CamelCase** — values appended directly to the prefix without any
+/// separator, used inside XCTest function names (Swift identifiers cannot
+/// contain `-`). Tokens are separated by `_`.
+///
+/// ```swift
+/// func testHappyPath_EpicCart_SeverityCritical_AllureID1234() { … }
+/// ```
+///
+/// Recognised prefixes (case-insensitive): `AllureID`, `Epic`, `Feature`,
+/// `Story`, `Severity`, `Owner`, `Tag`, `Layer`, `Lead`, `Framework`,
+/// `Language`, `Package`, `Suite`, `ParentSuite`, `SubSuite`, `Host`,
+/// `Thread`. Anything not matching a known prefix is ignored.
 public enum LabelExtractor {
-    /// Recognised label prefix → Allure `LabelName`.
+    /// Recognised label prefix (lowercased) → Allure `LabelName`. Ordered
+    /// from longest to shortest so `parentsuite` wins over `suite`.
     private static let prefixMap: [(prefix: String, label: LabelName)] = [
-        ("allureid",    .allureId),
-        ("allure-id",   .allureId),
-        ("epic",        .epic),
-        ("feature",     .feature),
-        ("story",       .story),
-        ("severity",    .severity),
-        ("owner",       .owner),
-        ("tag",         .tag),
-        ("layer",       .layer),
-        ("lead",        .lead),
-        ("framework",   .framework),
-        ("language",    .language),
-        ("package",     .package),
-        ("suite",       .suite),
         ("parentsuite", .parentSuite),
         ("subsuite",    .subSuite),
-        ("host",        .host),
+        ("allureid",    .allureId),
+        ("framework",   .framework),
+        ("language",    .language),
+        ("severity",    .severity),
+        ("feature",     .feature),
+        ("package",     .package),
         ("thread",      .thread),
+        ("layer",       .layer),
+        ("owner",       .owner),
+        ("story",       .story),
+        ("suite",       .suite),
+        ("epic",        .epic),
+        ("host",        .host),
+        ("lead",        .lead),
+        ("tag",         .tag),
     ]
 
     /// Extracts labels from the test name and the (optional) tag list.
@@ -47,25 +57,27 @@ public enum LabelExtractor {
         for tag in tags ?? [] {
             labels.append(contentsOf: parseTokens(in: tag))
         }
-        return labels
+        return deduplicate(labels)
     }
 
-    /// Splits a string on `_`, ` `, `,`, `;`, `/` and tries to match each
-    /// chunk against the known prefixes. Each chunk has the form
-    /// `<prefix>-<value>` (or `<prefix>=<value>`).
+    /// Splits a string on `_`, ` `, `,`, `;`, `/`, `(`, `)` and tries each
+    /// chunk against both notations.
     private static func parseTokens(in source: String) -> [Label] {
-        let separators = CharacterSet(charactersIn: "_ ,;/")
+        let separators = CharacterSet(charactersIn: "_ ,;/()")
         let tokens = source.components(separatedBy: separators)
         var out: [Label] = []
-        for token in tokens {
-            guard let label = parseToken(token) else { continue }
-            out.append(label)
+        for token in tokens where !token.isEmpty {
+            if let label = parseDashed(token) {
+                out.append(label)
+            } else if let label = parseCamelCase(token) {
+                out.append(label)
+            }
         }
         return out
     }
 
-    private static func parseToken(_ token: String) -> Label? {
-        // Split on either '-' or '='.
+    /// Tries the dashed/equals form: `prefix-value` or `prefix=value`.
+    private static func parseDashed(_ token: String) -> Label? {
         let dash = token.firstIndex(of: "-")
         let eq = token.firstIndex(of: "=")
         let separator: String.Index?
@@ -73,11 +85,38 @@ public enum LabelExtractor {
         else { separator = dash ?? eq }
 
         guard let sep = separator else { return nil }
-        let prefix = token[..<sep].lowercased()
+        let prefix = String(token[..<sep]).lowercased()
         let value = String(token[token.index(after: sep)...])
         guard !value.isEmpty else { return nil }
 
         guard let match = prefixMap.first(where: { $0.prefix == prefix }) else { return nil }
         return Label(match.label, value: value)
+    }
+
+    /// Tries the camelCase form: `PrefixValue` where Prefix is a recognised
+    /// keyword and Value is everything that follows.
+    ///
+    /// Matched greedily — `AllureID1234` resolves to `AllureID` (the longer
+    /// prefix wins because `prefixMap` is ordered by length).
+    private static func parseCamelCase(_ token: String) -> Label? {
+        let lower = token.lowercased()
+        for entry in prefixMap {
+            guard lower.hasPrefix(entry.prefix) else { continue }
+            let value = String(token.dropFirst(entry.prefix.count))
+            guard !value.isEmpty else { continue }
+            return Label(entry.label, value: value)
+        }
+        return nil
+    }
+
+    /// Returns `labels` with duplicates collapsed in insertion order.
+    private static func deduplicate(_ labels: [Label]) -> [Label] {
+        var seen = Set<Label>()
+        var out: [Label] = []
+        for l in labels where !seen.contains(l) {
+            seen.insert(l)
+            out.append(l)
+        }
+        return out
     }
 }
