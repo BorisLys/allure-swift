@@ -20,6 +20,5 @@ let package = Package(
             name: "AllureSwiftTesting",
             path: "Sources/AllureSwiftTesting"
         ),
-    ],
-    swiftLanguageModes: [.v6]
+    ]
 )
