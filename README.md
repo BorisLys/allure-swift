@@ -47,6 +47,7 @@ final class CheckoutTests: XCTestCase {
         allureSeverity(.critical)
         allureOwner("qa@example.com")
         allureTag("smoke")
+        allureLabel("microservice", value: "payment-service")
 
         allureStep("Open cart") {
             // …
@@ -101,7 +102,8 @@ struct CheckoutTests {
         .feature("Checkout"),
         .severity(.critical),
         .owner("qa@example.com"),
-        .allureTag("smoke")
+        .allureTag("smoke"),
+        .allureLabel("microservice", value: "payment-service")
     )
     func happyPath() async throws {
         // Steps are not supported in Swift Testing — use plain code.
