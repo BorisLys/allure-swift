@@ -6,6 +6,8 @@ let package = Package(
     platforms: [
         .macOS(.v13),
         .iOS(.v16),
+        .tvOS(.v16),
+        .watchOS(.v9),
     ],
     products: [
         .library(name: "AllureSwiftXCTest", targets: ["AllureSwiftXCTest"]),
