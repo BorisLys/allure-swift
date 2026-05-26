@@ -1,23 +1,27 @@
 import Testing
 // XCTest is imported so that each trait's prepare(for:) can write an `allure.*`
 // XCTActivity into the .xcresult bundle — the same mechanism as AllureSwiftXCTest.
-// AllureDirectiveParser filters these directive activities from the Allure step list;
-// they only affect labels, links, and name/description on the test result.
 import XCTest
-import AllureSwiftCore
+
+// MARK: - Severity
+
+/// Test severity level used in Allure reports.
+public enum Severity: String, Sendable {
+    case blocker
+    case critical
+    case normal
+    case minor
+    case trivial
+}
 
 // MARK: - Internal base
 
 /// Base for all Allure directive traits.
 ///
 /// Each conforming type:
-/// - Returns its `allure.*` directive text as a `Comment` (visible in Xcode test output
-///   and potentially captured in xcresult `testDescription` for Swift Testing tests).
+/// - Returns its `allure.*` directive text as a `Comment` (visible in Xcode test output).
 /// - Writes the directive as an `XCTActivity` in `prepare(for:)` so that
-///   `AllureDirectiveParser` can reliably extract it from the xcresult activity tree.
-///
-/// No user-visible steps are produced — `AllureDirectiveParser.isDirective` filters
-/// out all `allure.*` activities before they reach the Allure step list.
+///   xcresult-to-Allure converters can extract it from the xcresult activity tree.
 private protocol AllureDirectiveTrait: TestTrait, SuiteTrait {
     var directive: String { get }
 }
@@ -79,7 +83,6 @@ public struct AllureStoryTrait: AllureDirectiveTrait {
     public init(_ value: String) { self.value = value }
 }
 
-/// Uses `Severity` from `AllureSwiftCore` — the same type used in the Allure JSON model.
 public struct AllureSeverityTrait: AllureDirectiveTrait {
     var directive: String { "allure.label.severity:\(level.rawValue)" }
     let level: Severity

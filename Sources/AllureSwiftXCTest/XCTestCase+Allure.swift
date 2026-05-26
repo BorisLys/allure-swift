@@ -1,5 +1,15 @@
 import XCTest
-import AllureSwiftCore
+
+// MARK: - Severity
+
+/// Test severity level used in Allure reports.
+public enum Severity: String, Sendable {
+    case blocker
+    case critical
+    case normal
+    case minor
+    case trivial
+}
 
 /// XCTestCase helpers that embed Allure metadata as XCTActivity entries.
 ///
