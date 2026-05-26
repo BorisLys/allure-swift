@@ -10,13 +10,13 @@ let package = Package(
         .watchOS(.v9),
     ],
     products: [
-        .library(name: "AllureSwiftXCTest", targets: ["AllureSwiftXCTest"]),
+        .library(name: "AllureXCTest", targets: ["AllureXCTest"]),
         .library(name: "AllureSwiftTesting", targets: ["AllureSwiftTesting"]),
     ],
     targets: [
         .target(
-            name: "AllureSwiftXCTest",
-            path: "Sources/AllureSwiftXCTest",
+            name: "AllureXCTest",
+            path: "Sources/AllureXCTest",
             swiftSettings: [
                 // XCTest was not designed for Swift 6 strict concurrency.
                 // XCTContext.runActivity is @MainActor — calling it from a nonisolated

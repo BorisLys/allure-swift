@@ -26,7 +26,7 @@ https://github.com/BorisLys/allure-swift
 
 | Test framework | Product to add |
 |---|---|
-| XCTest (UI tests, unit tests) | `AllureSwiftXCTest` |
+| XCTest (UI tests, unit tests) | `AllureXCTest` |
 | Swift Testing (unit tests) | `AllureSwiftTesting` |
 
 ---
@@ -35,7 +35,7 @@ https://github.com/BorisLys/allure-swift
 
 ```swift
 import XCTest
-import AllureSwiftXCTest
+import AllureXCTest
 
 final class CheckoutTests: XCTestCase {
 
