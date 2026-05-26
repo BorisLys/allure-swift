@@ -135,39 +135,6 @@ struct CheckoutTests {
 
 ---
 
-## Full pipeline
-
-### 1. Run tests and save xcresult
-
-```bash
-xcodebuild test \
-  -project MyApp.xcodeproj \
-  -scheme MyAppUITests \
-  -destination "platform=iOS Simulator,name=iPhone 16" \
-  -resultBundlePath test.xcresult
-```
-
-### 2. Convert xcresult → Allure JSON
-
-Use [xcresults](https://github.com/eroshenkoam/xcresults) by Artem Eroshenko:
-
-```bash
-# Install
-brew install eroshenkoam/tap/xcresults
-
-# Convert
-xcresults convert test.xcresult --output allure-results
-```
-
-### 3. Generate Allure report
-
-```bash
-allure generate allure-results --output allure-report --clean
-allure open allure-report
-```
-
----
-
 ## CI/CD examples (GitHub Actions)
 
 ### Allure Report (self-hosted) via Allure 3
