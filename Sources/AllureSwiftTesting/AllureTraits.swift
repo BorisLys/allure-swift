@@ -1,7 +1,4 @@
 import Testing
-// XCTest is imported so that each trait's prepare(for:) can write an `allure.*`
-// XCTActivity into the .xcresult bundle — the same mechanism as AllureSwiftXCTest.
-import XCTest
 
 // MARK: - Severity
 
@@ -18,27 +15,16 @@ public enum Severity: String, Sendable {
 
 /// Base for all Allure directive traits.
 ///
-/// Each conforming type:
-/// - Returns its `allure.*` directive text as a `Comment` (visible in Xcode test output).
-/// - Writes the directive as an `XCTActivity` in `prepare(for:)` so that
-///   xcresult-to-Allure converters can extract it from the xcresult activity tree.
+/// Each conforming type exposes its `allure.*` directive as a `Comment`.
+/// Swift Testing serialises comments into `ActionTestSummary.documentation`
+/// inside the `.xcresult` bundle, where xcresult-to-Allure converters read them.
 private protocol AllureDirectiveTrait: TestTrait, SuiteTrait {
     var directive: String { get }
 }
 
 extension AllureDirectiveTrait {
-    /// Exposes the allure directive as a Comment so it appears in test output
-    /// and is captured in the xcresult annotation / testDescription field.
     public var comments: [Comment] {
         [Comment(rawValue: directive)]
-    }
-
-    /// Writes the directive as a hidden XCTActivity into xcresult before the test body runs.
-    public func prepare(for test: Test) async throws {
-        let d = directive
-        await MainActor.run {
-            XCTContext.runActivity(named: d) { _ in }
-        }
     }
 }
 
