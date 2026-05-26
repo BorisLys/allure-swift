@@ -182,7 +182,7 @@ allure open allure-report
       -resultBundlePath test.xcresult
 
 - name: Convert xcresult to Allure
-  run: xcresults convert test.xcresult --output allure-results
+  run: xcresults export test.xcresult -o /allure-results
 
 - name: Generate Allure 3 report
   run: npx allure generate allure-results --output allure-report --clean
@@ -208,7 +208,7 @@ Add `ALLURE_ENDPOINT`, `ALLURE_TOKEN`, and `ALLURE_PROJECT_ID` to your repositor
       -resultBundlePath test.xcresult
 
 - name: Convert xcresult to Allure
-  run: xcresults convert test.xcresult --output allure-results
+  run: xcresults export test.xcresult -o /allure-results
 
 - name: Install allurectl
   run: |
@@ -222,8 +222,7 @@ Add `ALLURE_ENDPOINT`, `ALLURE_TOKEN`, and `ALLURE_PROJECT_ID` to your repositor
     ALLURE_TOKEN: ${{ secrets.ALLURE_TOKEN }}
     ALLURE_PROJECT_ID: ${{ secrets.ALLURE_PROJECT_ID }}
   run: |
-    ./allurectl upload allure-results \
-      --launch-name "${{ github.workflow }} #${{ github.run_number }}"
+    ./allurectl upload allure-results 
 ```
 
 ---
