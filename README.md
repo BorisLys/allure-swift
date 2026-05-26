@@ -41,18 +41,18 @@ final class CheckoutTests: XCTestCase {
 
     func testHappyPath() throws {
         allureId(1234)
-        allureName("Successful checkout flow")
-        allureEpic("Cart")
-        allureFeature("Checkout")
-        allureSeverity(.critical)
-        allureOwner("qa@example.com")
-        allureTag("smoke")
-        allureLabel("microservice", value: "payment-service")
+        name("Successful checkout flow")
+        epic("Cart")
+        feature("Checkout")
+        severity(.critical)
+        owner("qa@example.com")
+        tag("smoke")
+        label("microservice", value: "payment-service")
 
-        allureStep("Open cart") {
+        step("Open cart") {
             // …
         }
-        allureStep("Tap checkout") {
+        step("Tap checkout") {
             // …
         }
     }
@@ -64,25 +64,25 @@ final class CheckoutTests: XCTestCase {
 | Method | Description |
 |---|---|
 | `allureId(_ id: Int/String)` | Link to test management entry |
-| `allureName(_ name: String)` | Override test name in report |
-| `allureDescription(_ text: String)` | Test description |
-| `allureSeverity(_ level: Severity)` | `.blocker` `.critical` `.normal` `.minor` `.trivial` |
-| `allureEpic(_ value: String)` | Epic label |
-| `allureFeature(_ value: String)` | Feature label |
-| `allureStory(_ value: String)` | Story label |
-| `allureOwner(_ value: String)` | Owner label |
-| `allureTag(_ value: String)` | Tag label |
-| `allureLayer(_ value: String)` | Layer label |
-| `allureSuite(_ value: String)` | Suite label |
-| `allureParentSuite(_ value: String)` | Parent suite label |
-| `allureSubSuite(_ value: String)` | Sub-suite label |
-| `allureLabel(_ name:value:)` | Arbitrary label |
-| `allureLink(name:url:type:)` | Generic link |
-| `allureIssue(name:url:)` | Issue tracker link |
-| `allureTms(name:url:)` | TMS link |
-| `allureStep(_ name:) { }` | Wrap code in a named step |
-| `allureAttachment(name:data:type:)` | Attach binary data |
-| `allureAttachment(name:string:type:)` | Attach text |
+| `name(_ name: String)` | Override test name in report |
+| `description(_ text: String)` | Test description |
+| `severity(_ level: Severity)` | `.blocker` `.critical` `.normal` `.minor` `.trivial` |
+| `epic(_ value: String)` | Epic label |
+| `feature(_ value: String)` | Feature label |
+| `story(_ value: String)` | Story label |
+| `owner(_ value: String)` | Owner label |
+| `tag(_ value: String)` | Tag label |
+| `layer(_ value: String)` | Layer label |
+| `suite(_ value: String)` | Suite label |
+| `parentSuite(_ value: String)` | Parent suite label |
+| `subSuite(_ value: String)` | Sub-suite label |
+| `label(_ name:value:)` | Arbitrary label |
+| `link(name:url:type:)` | Generic link |
+| `issue(name:url:)` | Issue tracker link |
+| `tms(name:url:)` | TMS link |
+| `step(_ name:) { }` | Wrap code in a named step |
+| `attachment(name:data:type:)` | Attach binary data |
+| `attachment(name:string:type:)` | Attach text |
 
 ---
 
@@ -116,19 +116,17 @@ struct CheckoutTests {
 | Trait | Description |
 |---|---|
 | `.allureId(_ id:)` | Link to test management entry |
-| `.allureName(_ name:)` | Override test name in report |
-| `.allureDescription(_ text:)` | Test description |
+| `.name(_ name:)` | Override test name in report |
+| `.description(_ text:)` | Test description |
 | `.severity(_ level:)` | `.blocker` `.critical` `.normal` `.minor` `.trivial` |
 | `.epic(_ value:)` | Epic label |
 | `.feature(_ value:)` | Feature label |
 | `.story(_ value:)` | Story label |
 | `.owner(_ value:)` | Owner label |
-| `.allureTag(_ value:)` | Tag label |
+| `.tag(_ value:)` | Tag label |
 | `.layer(_ value:)` | Layer label |
 | `.suite(_ value:)` | Suite label |
-| `.parentSuite(_ value:)` | Parent suite label |
-| `.subSuite(_ value:)` | Sub-suite label |
-| `.allureLabel(_ name:value:)` | Arbitrary label |
+| `.label(_ name:value:)` | Arbitrary label |
 | `.link(name:url:type:)` | Generic link |
 | `.issue(name:url:)` | Issue tracker link |
 | `.tms(name:url:)` | TMS link |

@@ -99,18 +99,6 @@ public struct AllureSuiteTrait: AllureDirectiveTrait {
     public init(_ value: String) { self.value = value }
 }
 
-public struct AllureParentSuiteTrait: AllureDirectiveTrait {
-    var directive: String { "allure.label.parentSuite:\(value)" }
-    let value: String
-    public init(_ value: String) { self.value = value }
-}
-
-public struct AllureSubSuiteTrait: AllureDirectiveTrait {
-    var directive: String { "allure.label.subSuite:\(value)" }
-    let value: String
-    public init(_ value: String) { self.value = value }
-}
-
 /// Attaches an arbitrary Allure label by name.
 public struct AllureLabelTrait: AllureDirectiveTrait {
     var directive: String { "allure.label.\(name):\(value)" }
@@ -146,7 +134,7 @@ public struct AllureLinkTrait: AllureDirectiveTrait {
 //
 // Enable dot-syntax in @Test and @Suite declarations:
 //
-//   @Suite(.parentSuite("Billing"))
+//   @Suite()
 //   struct CheckoutTests {
 //
 //       @Test(.allureId(42), .epic("Cart"), .feature("Checkout"), .severity(.critical))
@@ -159,11 +147,11 @@ extension Trait where Self == AllureIdTrait {
 }
 
 extension Trait where Self == AllureNameTrait {
-    public static func allureName(_ name: String) -> Self { .init(name) }
+    public static func name(_ name: String) -> Self { .init(name) }
 }
 
 extension Trait where Self == AllureDescriptionTrait {
-    public static func allureDescription(_ text: String) -> Self { .init(text) }
+    public static func description(_ text: String) -> Self { .init(text) }
 }
 
 extension Trait where Self == AllureEpicTrait {
@@ -187,7 +175,7 @@ extension Trait where Self == AllureOwnerTrait {
 }
 
 extension Trait where Self == AllureTagTrait {
-    public static func allureTag(_ value: String) -> Self { .init(value) }
+    public static func tag(_ value: String) -> Self { .init(value) }
 }
 
 extension Trait where Self == AllureLayerTrait {
@@ -198,16 +186,8 @@ extension Trait where Self == AllureSuiteTrait {
     public static func suite(_ value: String) -> Self { .init(value) }
 }
 
-extension Trait where Self == AllureParentSuiteTrait {
-    public static func parentSuite(_ value: String) -> Self { .init(value) }
-}
-
-extension Trait where Self == AllureSubSuiteTrait {
-    public static func subSuite(_ value: String) -> Self { .init(value) }
-}
-
 extension Trait where Self == AllureLabelTrait {
-    public static func allureLabel(_ name: String, value: String) -> Self {
+    public static func label(_ name: String, value: String) -> Self {
         .init(name: name, value: value)
     }
 }

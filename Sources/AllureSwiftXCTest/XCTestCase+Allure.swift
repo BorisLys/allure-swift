@@ -22,12 +22,12 @@ public enum Severity: String, Sendable {
 /// ```swift
 /// func testCheckout() throws {
 ///     allureId(1234)
-///     allureEpic("Cart")
-///     allureFeature("Checkout")
-///     allureSeverity(.critical)
-///     allureOwner("b.lysikov")
+///     epic("Cart")
+///     feature("Checkout")
+///     severity(.critical)
+///     owner("b.lysikov")
 ///
-///     try allureStep("Open cart") {
+///     try step("Open cart") {
 ///         // …
 ///     }
 /// }
@@ -47,67 +47,59 @@ extension XCTestCase {
     }
 
     /// Overrides the test name shown in the Allure report.
-    @nonobjc public func allureName(_ name: String) {
+    @nonobjc public func name(_ name: String) {
         writeDirective("allure.name:\(name)")
     }
 
     /// Sets the test description shown in the Allure report.
-    @nonobjc public func allureDescription(_ text: String) {
+    @nonobjc public func description(_ text: String) {
         writeDirective("allure.description:\(text)")
     }
 
     // MARK: - Labels
 
     /// Attaches an arbitrary Allure label.
-    @nonobjc public func allureLabel(_ name: String, value: String) {
+    @nonobjc public func label(_ name: String, value: String) {
         writeDirective("allure.label.\(name):\(value)")
     }
 
     /// Sets test severity. Uses `Severity` from `AllureSwiftCore`.
-    @nonobjc public func allureSeverity(_ level: Severity) {
+    @nonobjc public func severity(_ level: Severity) {
         writeDirective("allure.label.severity:\(level.rawValue)")
     }
 
-    @nonobjc public func allureEpic(_ value: String) {
+    @nonobjc public func epic(_ value: String) {
         writeDirective("allure.label.epic:\(value)")
     }
 
-    @nonobjc public func allureFeature(_ value: String) {
+    @nonobjc public func feature(_ value: String) {
         writeDirective("allure.label.feature:\(value)")
     }
 
-    @nonobjc public func allureStory(_ value: String) {
+    @nonobjc public func story(_ value: String) {
         writeDirective("allure.label.story:\(value)")
     }
 
-    @nonobjc public func allureOwner(_ value: String) {
+    @nonobjc public func owner(_ value: String) {
         writeDirective("allure.label.owner:\(value)")
     }
 
-    @nonobjc public func allureTag(_ value: String) {
+    @nonobjc public func tag(_ value: String) {
         writeDirective("allure.label.tag:\(value)")
     }
 
-    @nonobjc public func allureLayer(_ value: String) {
+    @nonobjc public func layer(_ value: String) {
         writeDirective("allure.label.layer:\(value)")
     }
 
-    @nonobjc public func allureSuite(_ value: String) {
+    @nonobjc public func suite(_ value: String) {
         writeDirective("allure.label.suite:\(value)")
-    }
-
-    @nonobjc public func allureParentSuite(_ value: String) {
-        writeDirective("allure.label.parentSuite:\(value)")
-    }
-
-    @nonobjc public func allureSubSuite(_ value: String) {
-        writeDirective("allure.label.subSuite:\(value)")
     }
 
     // MARK: - Links
 
     /// Attaches a generic link.
-    @nonobjc public func allureLink(name: String? = nil, url: String, type: String? = nil) {
+    @nonobjc public func link(name: String? = nil, url: String, type: String? = nil) {
         let linkName = name ?? url
         if let type {
             writeDirective("allure.link.\(linkName)[\(type)]:\(url)")
@@ -117,13 +109,13 @@ extension XCTestCase {
     }
 
     /// Attaches an issue tracker link.
-    @nonobjc public func allureIssue(name: String? = nil, url: String) {
-        allureLink(name: name ?? url, url: url, type: "issue")
+    @nonobjc public func issue(name: String? = nil, url: String) {
+        link(name: name ?? url, url: url, type: "issue")
     }
 
     /// Attaches a TMS (test management system) link.
-    @nonobjc public func allureTms(name: String? = nil, url: String) {
-        allureLink(name: name ?? url, url: url, type: "tms")
+    @nonobjc public func tms(name: String? = nil, url: String) {
+        link(name: name ?? url, url: url, type: "tms")
     }
 
     // MARK: - Steps
@@ -131,14 +123,14 @@ extension XCTestCase {
     /// Wraps `block` in an Allure step. The step appears in the report with the
     /// given name and inherits the pass/fail status of the block.
     @nonobjc @discardableResult
-    public func allureStep<T>(_ name: String, _ block: () throws -> T) rethrows -> T {
+    public func step<T>(_ name: String, _ block: () throws -> T) rethrows -> T {
         try XCTContext.runActivity(named: name) { _ in try block() }
     }
 
     // MARK: - Attachments
 
     /// Adds a binary attachment to the current test.
-    @nonobjc public func allureAttachment(name: String, data: Data, type: String) {
+    @nonobjc public func attachment(name: String, data: Data, type: String) {
         XCTContext.runActivity(named: name) { activity in
             let att = XCTAttachment(data: data, uniformTypeIdentifier: type)
             att.name = name
@@ -148,9 +140,9 @@ extension XCTestCase {
     }
 
     /// Adds a plain-text attachment to the current test.
-    @nonobjc public func allureAttachment(name: String, string: String, type: String = "text/plain") {
+    @nonobjc public func attachment(name: String, string: String, type: String = "text/plain") {
         guard let data = string.data(using: .utf8) else { return }
-        allureAttachment(name: name, data: data, type: type)
+        attachment(name: name, data: data, type: type)
     }
 
     // MARK: - Private
