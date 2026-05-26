@@ -168,7 +168,9 @@ allure open allure-report
 
 ---
 
-## CI/CD example (GitHub Actions)
+## CI/CD examples (GitHub Actions)
+
+### Allure Report (self-hosted) via Allure 3
 
 ```yaml
 - name: Run tests
@@ -182,11 +184,46 @@ allure open allure-report
 - name: Convert xcresult to Allure
   run: xcresults convert test.xcresult --output allure-results
 
-- name: Upload Allure results
+- name: Generate Allure 3 report
+  run: npx allure generate allure-results --output allure-report --clean
+
+- name: Upload report artifact
   uses: actions/upload-artifact@v4
   with:
-    name: allure-results
-    path: allure-results/
+    name: allure-report
+    path: allure-report/
+```
+
+### Allure TestOps via allurectl
+
+Add `ALLURE_ENDPOINT`, `ALLURE_TOKEN`, and `ALLURE_PROJECT_ID` to your repository secrets.
+
+```yaml
+- name: Run tests
+  run: |
+    xcodebuild test \
+      -project MyApp.xcodeproj \
+      -scheme MyAppUITests \
+      -destination "platform=iOS Simulator,name=iPhone 16,OS=latest" \
+      -resultBundlePath test.xcresult
+
+- name: Convert xcresult to Allure
+  run: xcresults convert test.xcresult --output allure-results
+
+- name: Install allurectl
+  run: |
+    curl -fsSL https://github.com/allure-framework/allurectl/releases/latest/download/allurectl_darwin_amd64 \
+      -o allurectl
+    chmod +x allurectl
+
+- name: Upload to Allure TestOps
+  env:
+    ALLURE_ENDPOINT: ${{ secrets.ALLURE_ENDPOINT }}
+    ALLURE_TOKEN: ${{ secrets.ALLURE_TOKEN }}
+    ALLURE_PROJECT_ID: ${{ secrets.ALLURE_PROJECT_ID }}
+  run: |
+    ./allurectl upload allure-results \
+      --launch-name "${{ github.workflow }} #${{ github.run_number }}"
 ```
 
 ---
