@@ -92,16 +92,17 @@ final class CheckoutTests: XCTestCase {
 import Testing
 import AllureSwiftTesting
 
-@Suite(.parentSuite("Billing"))
+@Suite("Suite name",
+       .epic("Epic"),
+       .feature("Feature"),
+       .story("Story"),
+       .owner("Boris")
+)
 struct CheckoutTests {
 
-    @Test(
+    @Test("Happy path test",
         .allureId(1234),
-        .allureName("Successful checkout flow"),
-        .epic("Cart"),
-        .feature("Checkout"),
         .severity(.critical),
-        .owner("qa@example.com"),
         .allureTag("smoke"),
         .allureLabel("microservice", value: "payment-service")
     )
@@ -116,7 +117,6 @@ struct CheckoutTests {
 | Trait | Description |
 |---|---|
 | `.allureId(_ id:)` | Link to test management entry |
-| `.name(_ name:)` | Override test name in report |
 | `.description(_ text:)` | Test description |
 | `.severity(_ level:)` | `.blocker` `.critical` `.normal` `.minor` `.trivial` |
 | `.epic(_ value:)` | Epic label |
